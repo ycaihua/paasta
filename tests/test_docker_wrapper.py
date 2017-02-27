@@ -120,8 +120,8 @@ class TestGenerateHostname(object):
         ['docker', '--host', '/fake.sock', 'run', '--hostname=myhostname', '-t']
     )
 ])
-def test_add_hostname(input_args, expected_args):
-    args = docker_wrapper.add_hostname(input_args, 'myhostname')
+def test_add_argument(input_args, expected_args):
+    args = docker_wrapper.add_argument(input_args, '--hostname=myhostname')
     assert args == expected_args
 
 
@@ -203,3 +203,104 @@ class TestMain(object):
             'docker',
             'ps',
             '--env=MESOS_TASK_ID=my-mesos-task-id')]
+
+    def test_numa_string_value(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=NUMA_CPU_AFFINITY="true"',
+        ]
+        docker_wrapper.main(argv)
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--env=NUMA_CPU_AFFINITY="true"')]
+
+    def test_numa_bogus_value(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=NUMA_CPU_AFFINITY=True',
+        ]
+        docker_wrapper.main(argv)
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--env=NUMA_CPU_AFFINITY=True')]
+
+    def test_numa_disabled(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=NUMA_CPU_AFFINITY=1',
+        ]
+        with mock.patch.object(
+            docker_wrapper,
+            'is_numa_enabled',
+            return_value=False,
+        ):
+            docker_wrapper.main(argv)
+
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--env=NUMA_CPU_AFFINITY=1')]
+
+    def test_numa_enabled(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=NUMA_CPU_AFFINITY=1',
+        ]
+        m = mock.mock_open()
+        m.return_value.__iter__.return_value = [
+            'physical id    : 0',
+            'physical id    : 1',
+            'physical id    : 0',
+            'physical id    : 1',
+        ]
+        with mock.patch.object(
+            docker_wrapper,
+            'is_numa_enabled',
+            return_value=True,
+        ), mock.patch.object(docker_wrapper, 'open', new=m):
+            docker_wrapper.main(argv)
+
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--cpuset-mems=1',
+            '--cpuset-cpus=1,3',
+            '--env=NUMA_CPU_AFFINITY=1',
+        )]
+
+    def test_numa_wrong_core(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=NUMA_CPU_AFFINITY=2',
+        ]
+        m = mock.mock_open()
+        m.return_value.__iter__.return_value = [
+            'physical id    : 0',
+            'physical id    : 1',
+            'physical id    : 0',
+            'physical id    : 1',
+        ]
+        with mock.patch.object(
+            docker_wrapper,
+            'is_numa_enabled',
+            return_value=True,
+        ), mock.patch.object(docker_wrapper, 'open', new=m):
+            docker_wrapper.main(argv)
+
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--env=NUMA_CPU_AFFINITY=2',
+        )]

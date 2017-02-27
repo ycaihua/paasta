@@ -8,6 +8,11 @@ underlying docker command.
 If the environment variables are unspecified, or if --hostname is already
 specified, this does not change any arguments and just directly calls docker
 as-is.
+
+Additionally this wrapper will look for the environment variable
+NUMA_CPU_AFFFINITY which contains the physical CPU and memory to restrict the
+container to. If the system is NUMA enabled, docker will be called with the
+arguments cpuset-cpus and cpuset-mems.
 """
 from __future__ import absolute_import
 from __future__ import unicode_literals
@@ -71,8 +76,8 @@ def generate_hostname(fqdn, mesos_task_id):
     return hostname
 
 
-def add_hostname(args, hostname):
-    # Add --hostname argument immediately after 'run' command if it exists
+def add_argument(args, argument):
+    # Add an argument immediately after 'run' command if it exists
     args = list(args)
 
     try:
@@ -80,22 +85,56 @@ def add_hostname(args, hostname):
     except ValueError:
         pass
     else:
-        args.insert(run_index + 1, '--hostname=' + hostname)
+        args.insert(run_index + 1, argument)
 
     return args
+
+
+def get_core_list(cpuid):
+    core=0
+    core_list=[]
+
+    try:
+        with open('/proc/cpuinfo', 'r') as f:
+            for line in f:
+                m = re.match('physical\sid.*(\d)', line)
+                if m:
+                    if int(m.group(1)) == cpuid:
+                        core_list.append(core)
+                    core +=1
+    except:
+        pass
+
+    return core_list
+
+
+def is_numa_enabled():
+    return os.path.exists('/proc/1/numa_maps')
 
 
 def main(argv=None):
     argv = argv if argv is not None else sys.argv[1:]
 
     env_args = parse_env_args(argv)
-    fqdn = socket.getfqdn()
 
     # Marathon sets MESOS_TASK_ID whereas Chronos sets mesos_task_id
     mesos_task_id = env_args.get('MESOS_TASK_ID') or env_args.get('mesos_task_id')
 
+    # Invalid the variable if it has a bogus value
+    numa_cpuid=env_args.get('NUMA_CPU_AFFINITY')
+    try:
+        int(numa_cpuid)
+    except:
+        numa_cpuid=None
+
+    if numa_cpuid and is_numa_enabled():
+        core_list=get_core_list(int(numa_cpuid))
+        if len(core_list) > 0:
+            argv = add_argument(argv, '--cpuset-cpus=' + ','.join(str(c) for c in core_list))
+            argv = add_argument(argv, '--cpuset-mems=' + str(numa_cpuid))
+
     if mesos_task_id and not already_has_hostname(argv):
-        hostname = generate_hostname(fqdn, mesos_task_id)
-        argv = add_hostname(argv, hostname)
+        hostname = generate_hostname(socket.getfqdn(), mesos_task_id)
+        argv = add_argument(argv, '--hostname=' + hostname)
 
     os.execlp('docker', 'docker', *argv[1:])
