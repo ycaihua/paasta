@@ -91,8 +91,8 @@ def add_argument(args, argument):
 
 
 def get_core_list(cpuid):
-    core=0
-    core_list=[]
+    core = 0
+    core_list = []
 
     try:
         with open('/proc/cpuinfo', 'r') as f:
@@ -101,8 +101,8 @@ def get_core_list(cpuid):
                 if m:
                     if int(m.group(1)) == cpuid:
                         core_list.append(core)
-                    core +=1
-    except:
+                    core += 1
+    except IOError:
         pass
 
     return core_list
@@ -121,14 +121,13 @@ def main(argv=None):
     mesos_task_id = env_args.get('MESOS_TASK_ID') or env_args.get('mesos_task_id')
 
     # Invalid the variable if it has a bogus value
-    numa_cpuid=env_args.get('NUMA_CPU_AFFINITY')
     try:
-        int(numa_cpuid)
-    except:
-        numa_cpuid=None
+        numa_cpuid = int(env_args.get('NUMA_CPU_AFFINITY'))
+    except (ValueError, TypeError):
+        numa_cpuid = None
 
     if numa_cpuid and is_numa_enabled():
-        core_list=get_core_list(int(numa_cpuid))
+        core_list = get_core_list(numa_cpuid)
         if len(core_list) > 0:
             argv = add_argument(argv, '--cpuset-cpus=' + ','.join(str(c) for c in core_list))
             argv = add_argument(argv, '--cpuset-mems=' + str(numa_cpuid))
