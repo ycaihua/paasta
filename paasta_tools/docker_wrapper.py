@@ -10,7 +10,7 @@ specified, this does not change any arguments and just directly calls docker
 as-is.
 
 Additionally this wrapper will look for the environment variable
-NUMA_CPU_AFFFINITY which contains the physical CPU and memory to restrict the
+PIN_TO_NUMA_NODE which contains the physical CPU and memory to restrict the
 container to. If the system is NUMA enabled, docker will be called with the
 arguments cpuset-cpus and cpuset-mems.
 """
