@@ -122,7 +122,7 @@ def main(argv=None):
 
     # Invalid the variable if it has a bogus value
     try:
-        numa_cpuid = int(env_args.get('NUMA_CPU_AFFINITY'))
+        numa_cpuid = int(env_args.get('PIN_TO_NUMA_NODE'))
     except (ValueError, TypeError):
         numa_cpuid = None
 

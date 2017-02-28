@@ -208,33 +208,33 @@ class TestMain(object):
         argv = [
             'docker',
             'run',
-            '--env=NUMA_CPU_AFFINITY="true"',
+            '--env=PIN_TO_NUMA_NODE="true"',
         ]
         docker_wrapper.main(argv)
         assert mock_execlp.mock_calls == [mock.call(
             'docker',
             'docker',
             'run',
-            '--env=NUMA_CPU_AFFINITY="true"')]
+            '--env=PIN_TO_NUMA_NODE="true"')]
 
     def test_numa_bogus_value(self, mock_execlp):
         argv = [
             'docker',
             'run',
-            '--env=NUMA_CPU_AFFINITY=True',
+            '--env=PIN_TO_NUMA_NODE=True',
         ]
         docker_wrapper.main(argv)
         assert mock_execlp.mock_calls == [mock.call(
             'docker',
             'docker',
             'run',
-            '--env=NUMA_CPU_AFFINITY=True')]
+            '--env=PIN_TO_NUMA_NODE=True')]
 
     def test_numa_disabled(self, mock_execlp):
         argv = [
             'docker',
             'run',
-            '--env=NUMA_CPU_AFFINITY=1',
+            '--env=PIN_TO_NUMA_NODE=1',
         ]
         with mock.patch.object(
             docker_wrapper,
@@ -247,13 +247,13 @@ class TestMain(object):
             'docker',
             'docker',
             'run',
-            '--env=NUMA_CPU_AFFINITY=1')]
+            '--env=PIN_TO_NUMA_NODE=1')]
 
     def test_numa_enabled(self, mock_execlp):
         argv = [
             'docker',
             'run',
-            '--env=NUMA_CPU_AFFINITY=1',
+            '--env=PIN_TO_NUMA_NODE=1',
         ]
         m = mock.mock_open()
         m.return_value.__iter__.return_value = [
@@ -275,14 +275,14 @@ class TestMain(object):
             'run',
             '--cpuset-mems=1',
             '--cpuset-cpus=1,3',
-            '--env=NUMA_CPU_AFFINITY=1',
+            '--env=PIN_TO_NUMA_NODE=1',
         )]
 
     def test_numa_wrong_core(self, mock_execlp):
         argv = [
             'docker',
             'run',
-            '--env=NUMA_CPU_AFFINITY=2',
+            '--env=PIN_TO_NUMA_NODE=2',
         ]
         m = mock.mock_open()
         m.return_value.__iter__.return_value = [
@@ -302,5 +302,5 @@ class TestMain(object):
             'docker',
             'docker',
             'run',
-            '--env=NUMA_CPU_AFFINITY=2',
+            '--env=PIN_TO_NUMA_NODE=2',
         )]
